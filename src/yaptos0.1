@@ -1,0 +1,149 @@
+#!/usr/bin/perl
+###############################################
+#  yaptos 0.1
+#
+#  Hugo Gonzalez
+#       hugo@honeynet.org.mx
+#
+#  Este software sirve para generar presentaciones a partir
+#  de un conjunto de imagenes, contando con una barra para
+#  avanzar o retroceder una diapositiva o para ir al final o 
+#  al principio de la misma.
+#  Se puede exportar una presentación o convertir un pdf a
+#  imagenes y luego generar la presentación.
+#
+#  uso :  yaptos ruta-imagenes nombre-salida
+#  ejemplo:
+#      yaptos /tmp/presenta1  presentacion1.swf
+#
+#
+#  Ver 0.1    25 Junio 2007
+#             First release
+#
+#
+#TODO:
+#      Agregar la capacidad de manipular las imagenes 
+#       desde el software ..
+#      Agregar sonidos
+#      Agregar transiciones.
+#
+#  This program may be used under the terms of GNU General
+#  Public License http://www.gnu.org/copyleft/gpl.html
+#
+
+use strict;
+use SWF qw(:ALL);
+
+SWF::setScale(1.0);
+
+
+#####################################################
+# newImage : Create a new image Shape
+# input name : the name of the image for the shape
+# output Shape $s1
+# ###################################################
+sub newImage {
+my ($name) = @_;
+
+my $s1 = new SWF::Shape();
+my $b1 = new SWF::Bitmap($name);
+
+#my $f1 = $s1->addFill($b1 ,0x41 );
+my $f1 = $s1->addFill($b1 );
+$s1->setRightFill($f1);
+
+my $w = $b1->getWidth();
+my $h = $b1->getHeight();
+
+$s1->drawLine($w, 0);
+$s1->drawLine(0, $h);
+$s1->drawLine(-$w, 0);
+$s1->drawLine(0, -$h);
+
+return $s1;
+}
+
+#####################################################
+# newButton : Create a new button
+# input name : array of the name of the image for the button
+# output button $B
+# ###################################################
+sub newButton{
+  my ($name1, $name2, $name3, $name4) = @_;
+  my $B = new SWF::Button();
+
+  $B->setUp(newImage("bu/".$name1));
+  $B->setOver(newImage("bu/".$name2));
+  $B->setHit(newImage("bu/".$name3));
+  $B->setDown(newImage("bu/".$name4));
+  return $B;
+}
+
+##########################
+# Got the files in the directory
+#
+
+
+my @ff = <$ARGV[0]/*jpg>;
+my $total= @ff;
+if ($total eq 0) {die "No hay elementos para usar";}
+
+my $name=$ff[1];
+my $ti = new SWF::Bitmap($name);
+my $Gw = $ti->getWidth();
+my $Gh = $ti->getHeight();
+
+my $t2 = new SWF::Bitmap('bu/next0.jpg');
+my $fw = $t2->getWidth();
+my $fh = $t2->getHeight();
+
+
+my $bf=newButton('next0.jpg','next1.jpg','next2.jpg','next3.jpg');
+$bf->setAction(new SWF::Action("NextFrame();"));
+my $bb=newButton('prev0.jpg','prev1.jpg','prev2.jpg','prev3.jpg');
+$bb->setAction(new SWF::Action("PrevFrame();"));
+my $bi=newButton('first0.jpg','first1.jpg','first2.jpg','first3.jpg');
+$bi->setAction(new SWF::Action("gotoAndStop(1);"));
+my $bl=newButton('last0.jpg','last1.jpg','last2.jpg','last3.jpg');
+$bl->setAction(new SWF::Action("gotoAndStop(".$total.");"));
+my $bm=newButton('yaptos.jpg','yaptos.jpg','yaptos.jpg','yaptos.jpg');
+#$bm->setAction(new SWF::Action("getURL('http://code.google.com/p/yaptos/','_new');"));
+$bm->setAction(new SWF::Action("getURL('http://github.com/hugo-glez/yaptos/','_new');"));
+
+
+my $m = new SWF::Movie();
+$m->setRate(1);
+$m->setDimension($Gw,$Gh+20+$fh);
+$m->setBackground(255,255,255);
+############################################
+# Add buttons to control the presentation
+#
+my $half = $Gw/2;
+$Gh+=5;
+#Fordward
+my $xx=$m->add($bf);
+$xx->moveTo($half+5,$Gh);
+#Backward
+$xx=$m->add($bb);
+$xx->moveTo($half-$fw-5,$Gh);
+#First
+$xx=$m->add($bi);
+$xx->moveTo($half-10-$fw-$fw,$Gh);
+#last
+$xx=$m->add($bl);
+$xx->moveTo($half+10+$fw,$Gh);
+$xx=$m->add($bm);
+$xx->moveTo(10,$Gh);
+
+
+$m->add( new SWF::Action("stop();"));
+#$m->add( new SWF::Action("onRelease(nextFrame();)"));
+foreach $name (@ff) {
+ $m->add(newImage($name));
+ $m->nextFrame();
+}
+
+
+$m->save($ARGV[1]);
+
+
